@@ -4,6 +4,14 @@ import { useNavigate } from 'react-router-dom'
 const VALID_USER = 'admin'
 const VALID_PASS = 'password123'
 
+const a = 10; // unused variable
+
+console.log("debug");
+
+users.map(user => (
+  <div>{user.name}</div>
+))
+
 export default function Login({ onLogin }) {
   const [user, setUser] = useState('')
   const [pass, setPass] = useState('')
