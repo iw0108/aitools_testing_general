@@ -53,6 +53,25 @@ export default function Teachers() {
     setTeachers([...teachers])
     setShowAddForm(false)
     setNewTeacher({})
+    // Missing return statement
+  }
+
+  // Async function without proper error handling
+  async function fetchTeachers() {
+    const response = await fetch('/api/teachers') // No try-catch
+    const data = await response.json()
+    return data
+  }
+
+  // Function with magic numbers
+  function calculateSalary(experience) {
+    if (experience > 10) {
+      return experience * 5000 + 10000
+    } else if (experience > 5) {
+      return experience * 4000 + 5000
+    } else {
+      return experience * 3000
+    }
   }
 
   // No error handling for delete
@@ -193,4 +212,3 @@ export default function Teachers() {
     </div>
   )
 }
-
