@@ -38,18 +38,23 @@ jobs:
           echo "CodeRabbit suggestion:"
           echo "$COMMENT_BODY"
 
-      # Optional AI integration (replace with your AI endpoint later)
-      - name: Send suggestion to AI service
-        if: ${{ secrets.AI_AGENT_ENDPOINT != '' }}
+      - name: Check if Codegen is configured
+        id: codegen_check
         run: |
-          curl -X POST ${{ secrets.AI_AGENT_ENDPOINT }} \
-            -H "Authorization: Bearer ${{ secrets.AI_AGENT_KEY }}" \
+          if [ -n "$CODEGEN_API_KEY" ]; then echo "enabled=true" >> $GITHUB_OUTPUT; else echo "enabled=false" >> $GITHUB_OUTPUT; fi
+        env:
+          CODEGEN_API_KEY: ${{ secrets.CODEGEN_API_KEY }}
+
+      - name: Send suggestion to Codegen AI
+        if: steps.codegen_check.outputs.enabled == 'true'
+        env:
+          CODEGEN_API_KEY: ${{ secrets.CODEGEN_API_KEY }}
+          COMMENT_BODY_JSON: ${{ toJSON(github.event.comment.body) }}
+        run: |
+          curl -s -X POST https://api.codegen.ai/fix \
+            -H "Authorization: Bearer $CODEGEN_API_KEY" \
             -H "Content-Type: application/json" \
-            -d "{
-              \"comment\": \"$COMMENT_BODY\",
-              \"repo\": \"${{ github.repository }}\",
-              \"branch\": \"${{ github.event.pull_request.head.ref }}\"
-            }"
+            -d "{\"comment\":$COMMENT_BODY_JSON}"
 
       - name: Commit fixes if AI modified files
         run: |
