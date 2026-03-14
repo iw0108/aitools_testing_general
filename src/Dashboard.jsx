@@ -28,6 +28,8 @@ export default function Dashboard({ onLogout }) {
   const [editingRow, setEditingRow] = useState(null)
   const studentCount = studentData.length
   const studentsCopy = [...studentData]
+  const [loading, setLoading] = useState(false) // Unused state
+  var globalCounter = 0 // Global variable in component
 
   function handleShowList() {
     console.log('Student list opened')
