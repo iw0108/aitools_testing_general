@@ -64,10 +64,16 @@ jobs:
           CODEGEN_API_KEY: ${{ secrets.CODEGEN_API_KEY }}
         run: |
           BODY=$(jq -n --arg c "$COMMENT_BODY" '{comment: $c}')
-          curl -s -X POST https://api.codegen.ai/fix \
+          curl -s -w "\n%{http_code}" -X POST https://api.codegen.ai/fix \
             -H "Authorization: Bearer $CODEGEN_API_KEY" \
             -H "Content-Type: application/json" \
-            -d "$BODY"
+            -d "$BODY" || true
+          code=$?
+          if [ $code -eq 6 ]; then
+            echo "::warning::Codegen API: curl exit 6 = Couldn't resolve host (DNS/network). Check api.codegen.ai."
+          elif [ $code -ne 0 ]; then
+            echo "::warning::Codegen API request failed with exit $code"
+          fi
 
       - name: Commit fixes if AI modified files
         run: |
@@ -109,10 +115,16 @@ jobs:
 
           BODY=$(jq -n --arg text "$COMMENT" '{comment_text:$text, notify_all:false}')
 
-          curl -X POST https://api.clickup.com/api/v2/task/${TASK_ID}/comment \
+          curl -s -w "\n%{http_code}" -X POST "https://api.clickup.com/api/v2/task/${TASK_ID}/comment" \
             -H "Authorization: ${{ secrets.CLICKUP_API_KEY }}" \
             -H "Content-Type: application/json" \
-            -d "$BODY"
+            -d "$BODY" || true
+          code=$?
+          if [ $code -eq 6 ]; then
+            echo "::warning::ClickUp API: curl exit 6 = Couldn't resolve host (DNS/network). Check api.clickup.com."
+          elif [ $code -ne 0 ]; then
+            echo "::warning::ClickUp API request failed with exit $code"
+          fi
 
       - name: Finish
         run: echo "Workflow completed."
