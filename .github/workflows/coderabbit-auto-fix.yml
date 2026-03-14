@@ -1,0 +1,41 @@
+# CodeRabbit Auto Fix - runs on all branches (dynamic, no fixed branch list)
+name: CodeRabbit Auto Fix
+
+on:
+  pull_request_review_comment:
+    types: [created]
+    # No branches filter = runs for PRs from any branch (dynamic all branches)
+
+jobs:
+  ai_fix:
+    runs-on: ubuntu-latest
+    if: github.event.comment.user.login == 'coderabbitai'
+    permissions:
+      contents: write
+    steps:
+      - name: Check if comment from CodeRabbit
+        run: echo "CodeRabbit comment detected"
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Send suggestion to Codegen AI
+        env:
+          COMMENT_BODY: ${{ toJSON(github.event.comment.body) }}
+          CODEGEN_API_KEY: ${{ secrets.CODEGEN_API_KEY }}
+        run: |
+          curl -X POST https://api.codegen.ai/fix \
+            -H "Authorization: Bearer $CODEGEN_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"comment\":$COMMENT_BODY}"
+
+      - name: Commit fixes
+        run: |
+          git config user.name "ai-bot"
+          git config user.email "ai@bot.com"
+          git add .
+          git diff --staged --quiet || git commit -m "fix: apply coderabbit suggestion"
+          git push
