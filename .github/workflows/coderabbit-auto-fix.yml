@@ -117,7 +117,7 @@ jobs:
 
           $COMMENT_BODY"
 
-          COMMENT="@codegen
+          COMMENT="@Codegen
 
           $SUMMARY
 
