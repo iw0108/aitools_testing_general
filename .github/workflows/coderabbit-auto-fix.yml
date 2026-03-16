@@ -108,30 +108,34 @@ jobs:
           echo "TASK_ID=$TASK_ID" >> $GITHUB_ENV
           echo "Detected ClickUp task ID: $TASK_ID"
 
-      - name: Post CodeRabbit suggestion to ClickUp
-        if: env.TASK_ID != ''
-        env:
-          CLICKUP_API_KEY: ${{ secrets.CLICKUP_API_KEY }}
-        run: |
+        - name: Post CodeRabbit suggestion to ClickUp
+          if: env.TASK_ID != ''
+          env:
+            CLICKUP_API_KEY: ${{ secrets.CLICKUP_API_KEY }}
+          run: |
 
-          COMMENT="CodeRabbit Review Suggestion
+            SUMMARY="CodeRabbit Review Summary
 
-          $COMMENT_BODY
+            $COMMENT_BODY"
 
-          PR: ${{ github.event.pull_request.html_url }}
-          Repo: ${{ github.repository }}
-          Branch: ${{ github.event.pull_request.head.ref }}"
+            COMMENT="@codegen
 
-          BODY=$(jq -n --arg text "$COMMENT" '{comment_text:$text, notify_all:false}')
+            $SUMMARY
 
-          RESP=$(curl -s -w "\n%{http_code}" -X POST "https://api.clickup.com/api/v2/task/${TASK_ID}/comment" \
-            -H "Authorization: $CLICKUP_API_KEY" \
-            -H "Content-Type: application/json" \
-            -d "$BODY")
+            PR: ${{ github.event.pull_request.html_url }}
+            Repo: ${{ github.repository }}
+            Branch: ${{ github.event.pull_request.head.ref }}"
 
-          HTTP_CODE=$(echo "$RESP" | tail -n1)
+            BODY=$(jq -n --arg text "$COMMENT" '{comment_text:$text, notify_all:false}')
 
-          echo "ClickUp response code: $HTTP_CODE"
+            RESP=$(curl -s -w "\n%{http_code}" -X POST "https://api.clickup.com/api/v2/task/${TASK_ID}/comment" \
+              -H "Authorization: $CLICKUP_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d "$BODY")
+
+            HTTP_CODE=$(echo "$RESP" | tail -n1)
+
+            echo "ClickUp response code: $HTTP_CODE"
 
           if [ "$HTTP_CODE" != "200" ]; then
             echo "ClickUp response:"
