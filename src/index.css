@@ -6,7 +6,7 @@
 
 body {
   margin: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   background-attachment: fixed;
   color: #333;
@@ -26,10 +26,10 @@ body {
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.3);
   backdrop-filter: blur(10px);
-  animation: fadeInUp 0.6s ease-out;
+  animation: fade-in-up 0.6s ease-out;
 }
 
-@keyframes fadeInUp {
+@keyframes fade-in-up {
   from {
     opacity: 0;
     transform: translateY(30px);
@@ -96,10 +96,10 @@ body {
   padding: 32px;
   max-width: 1200px;
   margin: 0 auto;
-  animation: fadeIn 0.5s ease-out;
+  animation: fade-in 0.5s ease-out;
 }
 
-@keyframes fadeIn {
+@keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
@@ -244,20 +244,16 @@ body {
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  animation: fadeIn 0.2s ease;
-}
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  animation: fade-in 0.2s ease;
 }
 .popup-box {
   background: white;
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.3);
   min-width: 320px;
-  animation: slideUp 0.3s ease;
+  animation: slide-up 0.3s ease;
 }
-@keyframes slideUp {
+@keyframes slide-up {
   from { 
     opacity: 0;
     transform: translateY(20px);
@@ -601,7 +597,7 @@ body {
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  animation: fadeIn 0.2s ease;
+  animation: fade-in 0.2s ease;
 }
 .modal-content {
   background: white;
@@ -612,7 +608,7 @@ body {
   max-height: 85vh;
   overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-  animation: slideUp 0.3s ease;
+  animation: slide-up 0.3s ease;
 }
 .modal-content h2 {
   margin-top: 0;
@@ -739,37 +735,4 @@ body {
 .admissions-wrap table button:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-}
-
-/* admissions page */
-.admissions-wrap {
-  padding: 24px;
-}
-.admissions-wrap header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-}
-.admissions-wrap table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.admissions-wrap table th,
-.admissions-wrap table td {
-  padding: 12px;
-  text-align: left;
-  border-bottom: 1px solid #ddd;
-}
-.admissions-wrap table button {
-  margin-right: 4px;
-  padding: 4px 8px;
-  font-size: 12px;
-}
-.modal-content select {
-  width: 100%;
-  padding: 8px;
-  margin-bottom: 12px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
 }

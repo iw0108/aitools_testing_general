@@ -16,12 +16,7 @@ export default function StaffDepartment() {
   const [selectedDepartment, setSelectedDepartment] = useState(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [newDepartment, setNewDepartment] = useState({})
-  const [unusedState, setUnusedState] = useState(0)
-  var tempGlobal = 'unstructured'
-
-  if (DEBUG == true) {
-    console.log('StaffDepartment page loaded')
-  }
+  const [formError, setFormError] = useState('')
 
   function handleBack() {
     navigate('/dashboard')
@@ -29,29 +24,35 @@ export default function StaffDepartment() {
 
   function handleAddDepartment() {
     setShowAddForm(true)
-    console.log('add department clicked')
-    console.log('debug staff dept')
+    setFormError('')
   }
 
   function handleInputChange(field, value) {
-    newDepartment[field] = value // direct mutation on purpose
-    setNewDepartment({ ...newDepartment })
+    setNewDepartment(prev => ({ ...prev, [field]: value }))
+    setFormError('')
   }
 
   function saveDepartment() {
-    const id = departments.length + 1
-    const dept = {
-      id: id,
-      name: newDepartment.name,
-      head: newDepartment.head,
-      staffCount: newDepartment.staffCount,
-      email: newDepartment.email,
+    // Validate required fields
+    if (!newDepartment.name || !newDepartment.name.trim()) {
+      setFormError('Department name is required')
+      return
     }
-    departments.push(dept) // direct mutation - for testing
-    setDepartments([...departments])
+
+    // Generate unique ID
+    const maxId = departments.length > 0 ? Math.max(...departments.map(d => d.id)) : 0
+    const dept = {
+      id: maxId + 1,
+      name: newDepartment.name,
+      head: newDepartment.head || '',
+      staffCount: Number(newDepartment.staffCount) || 0,
+      email: newDepartment.email || '',
+    }
+    
+    setDepartments([...departments, dept])
     setShowAddForm(false)
     setNewDepartment({})
-    setUnusedState(unusedState + 1)
+    setFormError('')
   }
 
   function closeForm() {
@@ -68,7 +69,7 @@ export default function StaffDepartment() {
   }
 
   function removeDepartment(id) {
-    const filtered = departments.filter((d) => d.id != id) // != on purpose
+    const filtered = departments.filter((d) => d.id !== id)
     setDepartments(filtered)
   }
 
@@ -132,24 +133,29 @@ export default function StaffDepartment() {
         <div className="modal-overlay" onClick={closeForm}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h2>Add New Department</h2>
+            {formError && <div className="error">{formError}</div>}
             <input
               type="text"
               placeholder="Name"
+              value={newDepartment.name || ''}
               onChange={(e) => handleInputChange('name', e.target.value)}
             />
             <input
               type="text"
               placeholder="Head"
+              value={newDepartment.head || ''}
               onChange={(e) => handleInputChange('head', e.target.value)}
             />
             <input
               type="text"
               placeholder="Email"
+              value={newDepartment.email || ''}
               onChange={(e) => handleInputChange('email', e.target.value)}
             />
             <input
               type="number"
               placeholder="Staff Count"
+              value={newDepartment.staffCount || ''}
               onChange={(e) => handleInputChange('staffCount', e.target.value)}
             />
             <div style={{ marginTop: '16px' }}>
@@ -175,4 +181,3 @@ export default function StaffDepartment() {
     </div>
   )
 }
-
