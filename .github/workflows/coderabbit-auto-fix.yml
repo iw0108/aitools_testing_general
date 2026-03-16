@@ -13,10 +13,10 @@ on:
 jobs:
   ai_fix:
     runs-on: ubuntu-latest
-    # Run on CodeRabbit line comment OR CodeRabbit full review (so ClickUp gets comment in both cases)
+
     if: |
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.user.login, 'coderabbit')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.user.login, 'coderabbit'))
+      contains(github.event.comment.user.login, 'coderabbit') ||
+      contains(github.event.review.user.login, 'coderabbit')
 
     permissions:
       contents: write
@@ -30,8 +30,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract CodeRabbit comment (line comment or full review body)
-        id: comment
+      - name: Extract CodeRabbit comment
         env:
           EVENT_NAME: ${{ github.event_name }}
           COMMENT_JSON: ${{ toJSON(github.event.comment.body || '') }}
@@ -42,38 +41,45 @@ jobs:
           else
             COMMENT_BODY=$(echo "$REVIEW_JSON" | jq -r .)
           fi
-          echo "COMMENT_BODY<<DELIM" >> $GITHUB_ENV
-          echo "$COMMENT_BODY" >> $GITHUB_ENV
-          echo "DELIM" >> $GITHUB_ENV
 
-      - name: Log CodeRabbit suggestion
+          echo "COMMENT_BODY<<EOF" >> $GITHUB_ENV
+          echo "$COMMENT_BODY" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Debug comment
         run: |
-          echo "CodeRabbit suggestion:"
+          echo "Detected CodeRabbit suggestion:"
           echo "$COMMENT_BODY"
 
-      - name: Check if Codegen is configured
-        id: codegen_check
+      - name: Skip if comment empty
         run: |
-          if [ -n "$CODEGEN_API_KEY" ]; then echo "enabled=true" >> $GITHUB_OUTPUT; else echo "enabled=false" >> $GITHUB_OUTPUT; fi
-        env:
-          CODEGEN_API_KEY: ${{ secrets.CODEGEN_API_KEY }}
+          if [ -z "$COMMENT_BODY" ]; then
+            echo "No comment body found. Skipping."
+            exit 0
+          fi
 
+      # Optional Codegen integration
       - name: Send suggestion to Codegen AI
-        if: steps.codegen_check.outputs.enabled == 'true'
         env:
           CODEGEN_API_KEY: ${{ secrets.CODEGEN_API_KEY }}
         run: |
-          BODY=$(jq -n --arg c "$COMMENT_BODY" '{comment: $c}')
-          curl -s -w "\n%{http_code}" -X POST https://api.codegen.ai/fix \
+          if [ -z "$CODEGEN_API_KEY" ]; then
+            echo "CODEGEN_API_KEY not configured, skipping Codegen step."
+            exit 0
+          fi
+
+          echo "Sending suggestion to Codegen AI"
+
+          printf '%s' "$COMMENT_BODY" > /tmp/comment.txt
+          BODY=$(jq -n --rawfile c /tmp/comment.txt '{comment:$c}')
+
+          RESP=$(curl -s -w "\n%{http_code}" -X POST https://api.codegen.ai/fix \
             -H "Authorization: Bearer $CODEGEN_API_KEY" \
             -H "Content-Type: application/json" \
-            -d "$BODY" || true
-          code=$?
-          if [ $code -eq 6 ]; then
-            echo "::warning::Codegen API: curl exit 6 = Couldn't resolve host (DNS/network). Check api.codegen.ai."
-          elif [ $code -ne 0 ]; then
-            echo "::warning::Codegen API request failed with exit $code"
-          fi
+            -d "$BODY" || true)
+
+          echo "Codegen response:"
+          echo "$RESP"
 
       - name: Commit fixes if AI modified files
         run: |
@@ -90,9 +96,9 @@ jobs:
           fi
 
       - name: Extract ClickUp task ID
-        id: clickup
         run: |
           TEXT="${{ github.event.pull_request.body }} ${{ github.event.pull_request.title }}"
+
           TASK_ID=$(echo "$TEXT" | grep -oE 'clickup\.com/t/[a-z0-9]+' | head -1 | sed 's|.*/t/||')
 
           if [ -z "$TASK_ID" ]; then
@@ -100,9 +106,12 @@ jobs:
           fi
 
           echo "TASK_ID=$TASK_ID" >> $GITHUB_ENV
+          echo "Detected ClickUp task ID: $TASK_ID"
 
       - name: Post CodeRabbit suggestion to ClickUp
         if: env.TASK_ID != ''
+        env:
+          CLICKUP_API_KEY: ${{ secrets.CLICKUP_API_KEY }}
         run: |
 
           COMMENT="CodeRabbit Review Suggestion
@@ -115,16 +124,19 @@ jobs:
 
           BODY=$(jq -n --arg text "$COMMENT" '{comment_text:$text, notify_all:false}')
 
-          curl -s -w "\n%{http_code}" -X POST "https://api.clickup.com/api/v2/task/${TASK_ID}/comment" \
-            -H "Authorization: ${{ secrets.CLICKUP_API_KEY }}" \
+          RESP=$(curl -s -w "\n%{http_code}" -X POST "https://api.clickup.com/api/v2/task/${TASK_ID}/comment" \
+            -H "Authorization: $CLICKUP_API_KEY" \
             -H "Content-Type: application/json" \
-            -d "$BODY" || true
-          code=$?
-          if [ $code -eq 6 ]; then
-            echo "::warning::ClickUp API: curl exit 6 = Couldn't resolve host (DNS/network). Check api.clickup.com."
-          elif [ $code -ne 0 ]; then
-            echo "::warning::ClickUp API request failed with exit $code"
+            -d "$BODY")
+
+          HTTP_CODE=$(echo "$RESP" | tail -n1)
+
+          echo "ClickUp response code: $HTTP_CODE"
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "ClickUp response:"
+            echo "$RESP"
           fi
 
       - name: Finish
-        run: echo "Workflow completed."
+        run: echo "Workflow completed successfully."
