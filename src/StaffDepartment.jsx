@@ -85,7 +85,7 @@ export default function StaffDepartment() {
 
       <section className="hero-section">
         <h2>Manage Departments</h2>
-        <p>Simple staff department management page used for temporary testing with unhandled logic.</p>
+        <p>Manage department details, view records, and keep staff information up to date.</p>
       </section>
 
       <div style={{ marginBottom: '20px' }}>
