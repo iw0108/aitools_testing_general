@@ -1,42 +1,56 @@
 /**
- * Temporary file to verify .coderabbit.yaml path_instructions + pre-merge checks.
- * Delete this file after you confirm CodeRabbit flags the issues below.
+ * TEMP: CodeRabbit rule probe — delete after verifying .coderabbit.yaml.
+ * Expect flags: console.*, unused vars, missing list keys, inline styles,
+ * unhandled fetch/async, hardcoded secret, duplicate logic.
  */
-const HARDCODED_SERVICE_TOKEN = "ghp_fake_token_for_coderabbit_probe_only";
+const PROBE_API_SECRET = "sk_live_fake_coderabbit_probe_not_real";
 
-function countItemsForProbe(list) {
-  return list.filter(Boolean).length;
+function probeSumIds(items) {
+  return items.map((x) => x.id).reduce((a, b) => a + b, 0);
 }
 
-function countItemsForProbeCopy(list) {
-  return list.filter(Boolean).length;
+function probeSumIdsDuplicate(items) {
+  return items.map((x) => x.id).reduce((a, b) => a + b, 0);
 }
 
 export function CodeRabbitRuleProbe() {
-  const neverRead = "unused";
+  const unusedProbeFlag = true;
 
-  console.log("CodeRabbit probe: should be flagged");
+  console.log("[probe] should flag console.log");
+  console.info("[probe] should flag console.info");
 
-  const rows = ["one", "two"];
+  const list = [
+    { id: 1, name: "a" },
+    { id: 2, name: "b" },
+  ];
 
-  const loadData = async () => {
-    const res = await fetch("/api/demo", {
-      headers: { Authorization: `Bearer ${HARDCODED_SERVICE_TOKEN}` },
+  const fetchWithoutHandling = async () => {
+    const response = await fetch("/api/probe", {
+      headers: { "X-Api-Key": PROBE_API_SECRET },
     });
-    return res.json();
+    return response.json();
   };
 
   return (
-    <div style={{ marginTop: 12, border: "1px solid #ccc" }}>
-      <button type="button" onClick={() => loadData()}>
-        Load (no error handling)
+    <section style={{ padding: 16, backgroundColor: "#fafafa" }}>
+      <button
+        type="button"
+        style={{ fontWeight: "bold" }}
+        onClick={() => {
+          fetchWithoutHandling();
+        }}
+      >
+        Trigger fetch (promise ignored, no catch)
       </button>
       <ul>
-        {rows.map((label) => (
-          <li>{label}</li>
+        {list.map((row) => (
+          <li>
+            {row.name} (missing key prop)
+          </li>
         ))}
       </ul>
-    </div>
+      <p>Unused duplicate helpers below: {probeSumIds(list)} vs {probeSumIdsDuplicate(list)}</p>
+    </section>
   );
 }
 
