@@ -15,6 +15,7 @@ export default function Settings() {
   }
 
   function handleSave() {
+    console.log('handleSave')
     localStorage.setItem('appSettings', JSON.stringify(settings))
     alert('Settings saved successfully!')
   }

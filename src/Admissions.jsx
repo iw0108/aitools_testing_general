@@ -12,7 +12,8 @@ const COURSE_FEES = {
 
 export default function Admissions() {
   const navigate = useNavigate()
-  
+
+  console.log('Admissions')
   const [admissions, setAdmissions] = useState([
     { id: 1, name: 'John Doe', email: 'john@example.com', phone: '1234567890', course: 'Computer Science', status: 'pending' },
     { id: 2, name: 'Jane Smith', email: 'jane@example.com', phone: '0987654321', course: 'Mathematics', status: 'approved' },
