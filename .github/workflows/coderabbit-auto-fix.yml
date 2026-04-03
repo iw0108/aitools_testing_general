@@ -58,27 +58,27 @@ jobs:
             exit 0
           fi
 
-      # Optional Codegen integration
-      - name: Send suggestion to Codegen AI
+      # Optional Cursor integration
+      - name: Send suggestion to Cursor AI
         env:
-          CODEGEN_API_KEY: ${{ secrets.CODEGEN_API_KEY }}
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
         run: |
-          if [ -z "$CODEGEN_API_KEY" ]; then
-            echo "CODEGEN_API_KEY not configured, skipping Codegen step."
+          if [ -z "$CURSOR_API_KEY" ]; then
+            echo "CURSOR_API_KEY not configured, skipping Cursor step."
             exit 0
           fi
 
-          echo "Sending suggestion to Codegen AI"
+          echo "Sending suggestion to Cursor AI"
 
           printf '%s' "$COMMENT_BODY" > /tmp/comment.txt
           BODY=$(jq -n --rawfile c /tmp/comment.txt '{comment:$c}')
 
           RESP=$(curl -s -w "\n%{http_code}" -X POST https://api.codegen.ai/fix \
-            -H "Authorization: Bearer $CODEGEN_API_KEY" \
+            -H "Authorization: Bearer $CURSOR_API_KEY" \
             -H "Content-Type: application/json" \
             -d "$BODY" || true)
 
-          echo "Codegen response:"
+          echo "Cursor response:"
           echo "$RESP"
 
       - name: Commit fixes if AI modified files
@@ -98,11 +98,10 @@ jobs:
       - name: Extract ClickUp task ID
         env:
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
-          PR_BODY: ${{ github.event.pull_request.body }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          SECRET_TASK_ID: ${{ secrets.CLICKUP_TASK_ID }}
         run: |
           TASK_ID=""
+          PROC_BRANCH=""
+          PROC_TASK_URL=""
 
           proc_get() {
             local key="$1"
@@ -123,50 +122,45 @@ jobs:
             echo "$id"
           }
 
-          if [ -f process.md ]; then
-            echo "Found process.md; parsing clickup_task and optional branch."
-            PROC_BRANCH=$(proc_get branch process.md || true)
-            PROC_TASK_RAW=$(proc_get clickup_task process.md || true)
+          # Task link and branch come only from process.md or process.md.example (no PR text, no secrets).
+          for PROC_FILE in process.md process.md.example; do
+            [ -f "$PROC_FILE" ] || continue
+            echo "Parsing $PROC_FILE for clickup_task and branch."
+            PROC_BRANCH=$(proc_get branch "$PROC_FILE" || true)
+            PROC_TASK_RAW=$(proc_get clickup_task "$PROC_FILE" || true)
             if [ -n "$PROC_BRANCH" ] && [ "$PROC_BRANCH" != "$HEAD_REF" ]; then
-              echo "::warning::process.md branch '$PROC_BRANCH' does not match PR head ref '$HEAD_REF'"
+              echo "::warning::$PROC_FILE branch '$PROC_BRANCH' does not match PR head ref '$HEAD_REF'"
             fi
-            if [ -n "$PROC_TASK_RAW" ]; then
-              if echo "$PROC_TASK_RAW" | grep -qi 'clickup\.com'; then
-                TASK_ID=$(id_from_clickup_string "$PROC_TASK_RAW")
-              else
-                CLEAN=$(echo "$PROC_TASK_RAW" | tr -d '\r')
-                if echo "$CLEAN" | grep -qE '^[a-zA-Z0-9_-]+$'; then
-                  TASK_ID="$CLEAN"
-                fi
+            if [ -z "$PROC_TASK_RAW" ]; then
+              continue
+            fi
+            if echo "$PROC_TASK_RAW" | grep -qi 'clickup\.com'; then
+              TASK_ID=$(id_from_clickup_string "$PROC_TASK_RAW")
+              PROC_TASK_URL=$(echo "$PROC_TASK_RAW" | tr -d '\r' | sed 's/[[:space:]]*$//')
+            else
+              CLEAN=$(echo "$PROC_TASK_RAW" | tr -d '\r')
+              if echo "$CLEAN" | grep -qE '^[a-zA-Z0-9_-]+$'; then
+                TASK_ID="$CLEAN"
+                PROC_TASK_URL="https://app.clickup.com/t/${TASK_ID}"
               fi
-              if [ -n "$TASK_ID" ]; then
-                echo "ClickUp task id from process.md: $TASK_ID"
-              fi
-            fi
-          else
-            echo "No process.md in repo root; will try PR text then secret."
-          fi
-
-          if [ -z "$TASK_ID" ]; then
-            TEXT="${PR_BODY} ${PR_TITLE}"
-            FIRST_URL=$(echo "$TEXT" | grep -oEi 'https?://[^[:space:]]*clickup\.com[^[:space:]]*' | head -1 || true)
-            if [ -n "$FIRST_URL" ]; then
-              TASK_ID=$(id_from_clickup_string "$FIRST_URL")
-            fi
-            if [ -z "$TASK_ID" ]; then
-              TASK_ID=$(echo "$TEXT" | grep -oEi 'clickup\.com/t/[a-z0-9]+' | head -1 | sed 's|.*/t/||' || true)
             fi
             if [ -n "$TASK_ID" ]; then
-              echo "ClickUp task id from PR title/body: $TASK_ID"
+              echo "ClickUp task id from $PROC_FILE: $TASK_ID"
+              break
             fi
-          fi
+          done
 
-          if [ -z "$TASK_ID" ] && [ -n "$SECRET_TASK_ID" ]; then
-            TASK_ID="$SECRET_TASK_ID"
-            echo "ClickUp task id from CLICKUP_TASK_ID secret."
+          if [ -z "$TASK_ID" ]; then
+            echo "No clickup_task found in process.md or process.md.example; skipping ClickUp comment."
           fi
 
           echo "TASK_ID=$TASK_ID" >> $GITHUB_ENV
+          {
+            echo "PROC_TASK_URL<<__PROC_EOF__"
+            echo "${PROC_TASK_URL:-}"
+            echo "__PROC_EOF__"
+          } >> $GITHUB_ENV
+          echo "PROC_BRANCH=$PROC_BRANCH" >> $GITHUB_ENV
           echo "Final ClickUp task id: ${TASK_ID:-<empty>}"
 
       - name: Post CodeRabbit suggestion to ClickUp
@@ -178,13 +172,12 @@ jobs:
 
           $COMMENT_BODY"
 
-          COMMENT="@Codegen
+          COMMENT="@Cursor
 
           $SUMMARY
 
-          PR: ${{ github.event.pull_request.html_url }}
-          Repo: ${{ github.repository }}
-          Branch: ${{ github.event.pull_request.head.ref }}"
+          Task: ${{ env.PROC_TASK_URL }}
+          Branch: ${{ env.PROC_BRANCH }}"
 
           BODY=$(jq -n --arg text "$COMMENT" '{comment_text:$text, notify_all:false}')
 
