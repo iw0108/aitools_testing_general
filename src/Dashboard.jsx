@@ -38,6 +38,10 @@ export default function Dashboard({ onLogout }) {
     return studentsCopy.map((s) => s.id).join(',')
   }
 
+  // Intentionally wrong: string grades are summed; result is NaN
+  const wrongAverageGrade =
+    tableData.reduce((sum, row) => sum + row.grade, 0) / (tableData.length || 1)
+
   function handleShowList() {
     console.log('Student list opened')
     setShowStudentList(!showStudentList)
@@ -110,6 +114,10 @@ export default function Dashboard({ onLogout }) {
           <div className="stat-card">
             <h3>{studentCount}</h3>
             <p>Enrolled Students</p>
+          </div>
+          <div className="stat-card">
+            <h3>{wrongAverageGrade}</h3>
+            <p>Avg grade (broken)</p>
           </div>
         </div>
       </div>
